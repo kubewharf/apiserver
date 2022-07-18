@@ -88,10 +88,20 @@ func (f UserConversionFunc) User(chain []*x509.Certificate) (*authenticator.Resp
 // is eventually expected, but not currently present.
 type VerifyOptionFunc func() (x509.VerifyOptions, bool)
 
+// SNIVerifyOptionsProvider
+type SNIVerifyOptionsProvider interface {
+	SNIVerifyOptions(host string) (x509.VerifyOptions, bool)
+}
+
+// SNIVerifyOtionsFunc is function with provides a shallow copy of the VerifyOptions to the authenticator for each
+// hostname.
+type SNIVerifyOtionsFunc func(host string) (x509.VerifyOptions, bool)
+
 // Authenticator implements request.Authenticator by extracting user info from verified client certificates
 type Authenticator struct {
-	verifyOptionsFn VerifyOptionFunc
-	user            UserConversion
+	verifyOptionsFn    VerifyOptionFunc
+	sniVerifyOptionsFn SNIVerifyOtionsFunc
+	user               UserConversion
 }
 
 // New returns a request.Authenticator that verifies client certificates using the provided
@@ -103,7 +113,11 @@ func New(opts x509.VerifyOptions, user UserConversion) *Authenticator {
 // NewDynamic returns a request.Authenticator that verifies client certificates using the provided
 // VerifyOptionFunc (which may be dynamic), and converts valid certificate chains into user.Info using the provided UserConversion
 func NewDynamic(verifyOptionsFn VerifyOptionFunc, user UserConversion) *Authenticator {
-	return &Authenticator{verifyOptionsFn, user}
+	return &Authenticator{verifyOptionsFn: verifyOptionsFn, user: user}
+}
+
+func NewSNIDynamic(sniVerifyOptionsFn SNIVerifyOtionsFunc, verifyOptionsFn VerifyOptionFunc, user UserConversion) *Authenticator {
+	return &Authenticator{sniVerifyOptionsFn: sniVerifyOptionsFn, verifyOptionsFn: verifyOptionsFn, user: user}
 }
 
 // AuthenticateRequest authenticates the request using presented client certificates
@@ -113,7 +127,15 @@ func (a *Authenticator) AuthenticateRequest(req *http.Request) (*authenticator.R
 	}
 
 	// Use intermediates, if provided
-	optsCopy, ok := a.verifyOptionsFn()
+	var optsCopy x509.VerifyOptions
+	var ok bool
+	if a.sniVerifyOptionsFn != nil {
+		optsCopy, ok = a.sniVerifyOptionsFn(req.Host)
+	}
+	if !ok && a.verifyOptionsFn != nil {
+		optsCopy, ok = a.verifyOptionsFn()
+	}
+
 	// if there are intentionally no verify options, then we cannot authenticate this request
 	if !ok {
 		return nil, false, nil

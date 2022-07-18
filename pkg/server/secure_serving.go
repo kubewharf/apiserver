@@ -124,6 +124,18 @@ func (s *SecureServingInfo) tlsConfig(stopCh <-chan struct{}) (*tls.Config, erro
 		tlsConfig.GetConfigForClient = dynamicCertificateController.GetConfigForClient
 	}
 
+	if s.DynamicClientConfig != nil {
+		getConfigFunc := tlsConfig.GetConfigForClient
+		if getConfigFunc == nil {
+			getConfigFunc = func(chi *tls.ClientHelloInfo) (*tls.Config, error) {
+				tlsConfigCopy := tlsConfig.Clone()
+				tlsConfigCopy.GetConfigForClient = nil
+				return tlsConfigCopy, nil
+			}
+		}
+		tlsConfig.GetConfigForClient = s.DynamicClientConfig.WrapGetConfigForClient(getConfigFunc)
+	}
+
 	return tlsConfig, nil
 }
 

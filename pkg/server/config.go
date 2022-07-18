@@ -252,6 +252,9 @@ type SecureServingInfo struct {
 	// ClientCA is the certificate bundle for all the signers that you'll recognize for incoming client certificates
 	ClientCA dynamiccertificates.CAContentProvider
 
+	// DynamicClientConfig provides
+	DynamicClientConfig dynamiccertificates.DynamicClientConfigProvider
+
 	// MinTLSVersion optionally overrides the minimum TLS version supported.
 	// Values are from tls package constants (https://golang.org/pkg/crypto/tls/#pkg-constants).
 	MinTLSVersion uint16
