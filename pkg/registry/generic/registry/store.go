@@ -188,6 +188,11 @@ type Store struct {
 	// If the StorageVersioner is nil, apiserver will leave the
 	// storageVersionHash as empty in the discovery document.
 	StorageVersioner runtime.GroupVersioner
+	// InMemoryVersioner outputs the <group/version/kind> an object will be
+	// converted to either receiving from client request or from etcd, given a list of possible
+	// kinds of the object.
+	// If the InMemoryVersioner is nil, apiserver will usually use the internal version.
+	InMemoryVersioner runtime.GroupVersioner
 	// Called to cleanup clients used by the underlying Storage; optional.
 	DestroyFunc func()
 }
@@ -1382,6 +1387,10 @@ func (e *Store) ConvertToTable(ctx context.Context, object runtime.Object, table
 
 func (e *Store) StorageVersion() runtime.GroupVersioner {
 	return e.StorageVersioner
+}
+
+func (e *Store) InMemoryVersion() runtime.GroupVersioner {
+	return e.InMemoryVersioner
 }
 
 // validateIndexers will check the prefix of indexers.

@@ -146,6 +146,19 @@ func getStorageVersionKind(storageVersioner runtime.GroupVersioner, storage rest
 	return gvk, nil
 }
 
+func getInMemoryVersionKind(inMemoryVersioner runtime.GroupVersioner, storage rest.Storage, typer runtime.ObjectTyper) (schema.GroupVersionKind, error) {
+	object := storage.New()
+	fqKinds, _, err := typer.ObjectKinds(object)
+	if err != nil {
+		return schema.GroupVersionKind{}, err
+	}
+	gvk, ok := inMemoryVersioner.KindForGroupVersionKinds(fqKinds)
+	if !ok {
+		return schema.GroupVersionKind{}, fmt.Errorf("cannot find the hub version kind for %v", reflect.TypeOf(object))
+	}
+	return gvk, nil
+}
+
 // GetResourceKind returns the external group version kind registered for the given storage
 // object. If the storage object is a subresource and has an override supplied for it, it returns
 // the group version kind supplied in the override.
@@ -241,6 +254,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	connecter, isConnecter := storage.(rest.Connecter)
 	storageMeta, isMetadata := storage.(rest.StorageMetadata)
 	storageVersionProvider, isStorageVersionProvider := storage.(rest.StorageVersionProvider)
+	inMemoryVersionProvider, isInMemoryVersionProvider := storage.(rest.InMemoryVersionProvider)
 	if !isMetadata {
 		storageMeta = defaultStorageMetadata{}
 	}
@@ -395,6 +409,16 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 		apiResource.StorageVersionHash = discovery.StorageVersionHash(gvk.Group, gvk.Version, gvk.Kind)
 	}
 
+	hubGroupVersion := schema.GroupVersion{Group: fqKindToRegister.Group, Version: runtime.APIVersionInternal}
+	if isInMemoryVersionProvider && inMemoryVersionProvider.InMemoryVersion() != nil {
+		versioner := inMemoryVersionProvider.InMemoryVersion()
+		gvk, err := getInMemoryVersionKind(versioner, storage, a.group.Typer)
+		if err != nil {
+			return nil, err
+		}
+		hubGroupVersion = gvk.GroupVersion()
+	}
+
 	// Get the list of actions for the given scope.
 	switch {
 	case !namespaceScoped:
@@ -545,7 +569,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 		Subresource: subresource,
 		Kind:        fqKindToRegister,
 
-		HubGroupVersion: schema.GroupVersion{Group: fqKindToRegister.Group, Version: runtime.APIVersionInternal},
+		HubGroupVersion: hubGroupVersion,
 
 		MetaGroupVersion: metav1.SchemeGroupVersion,
 

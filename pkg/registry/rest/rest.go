@@ -349,3 +349,12 @@ type StorageVersionProvider interface {
 	// list of kinds the object might belong to.
 	StorageVersion() runtime.GroupVersioner
 }
+
+// InMemoryVersionProvider is an optional interface that a storage object can
+// implement if it wishes to disclose its in memory version.
+type InMemoryVersionProvider interface {
+	// InMemoryVersion returns a group versioner, which will outputs the gvk
+	// an object will be converted to either receiving from client request or
+	// from etcd, given a list of kinds the object might belong to.
+	InMemoryVersion() runtime.GroupVersioner
+}
