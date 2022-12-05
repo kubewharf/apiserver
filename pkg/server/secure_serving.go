@@ -157,6 +157,7 @@ func (s *SecureServingInfo) Serve(handler http.Handler, shutdownTimeout time.Dur
 		Handler:        handler,
 		MaxHeaderBytes: 1 << 20,
 		TLSConfig:      tlsConfig,
+		ErrorLog:       s.ErrorLog,
 	}
 
 	// At least 99% of serialized resources in surveyed clusters were smaller than 256kb.

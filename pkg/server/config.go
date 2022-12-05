@@ -18,6 +18,7 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	goruntime "runtime"
@@ -269,6 +270,12 @@ type SecureServingInfo struct {
 
 	// DisableHTTP2 indicates that http2 should not be enabled.
 	DisableHTTP2 bool
+
+	// ErrorLog specifies an optional logger for errors accepting
+	// connections, unexpected behavior from handlers, and
+	// underlying FileSystem errors.
+	// If nil, logging is done via the log package's standard logger.
+	ErrorLog *log.Logger
 }
 
 type AuthenticationInfo struct {
